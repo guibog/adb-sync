@@ -24,6 +24,11 @@ import re
 import stat
 import subprocess
 import time
+import logging
+
+logging.basicConfig(format='[%(levelname)-7s] %(message)s')
+
+log = logging.getLogger(__file__)
 
 
 def argquote(arg):
@@ -183,6 +188,7 @@ class AdbFileSystem(object):
             b'(',
             b'(;  #`ls`$PATH\'"(\\\\\\\\){};!\xc0\xaf\xff\xc2\xbf'
         ]
+        log.debug("Testing if device is accessible through adb")
         for test_string in test_strings:
             good = False
             with self.Stdout(self.adb + [b'shell', b'date +%s' %
@@ -531,12 +537,10 @@ class FileSyncer(object):
                   (self.push[i], dst_name.decode('utf-8', errors='replace')))
             if stat.S_ISDIR(localstat.st_mode) or stat.S_ISDIR(remotestat.st_mode):
                 if not self.allow_replace:
-                    print(
-                        'Would have to replace to do this. Use --force to allow this.')
+                    print('Would have to replace to do this. Use --force to allow this.')
                     continue
             if not self.allow_overwrite:
-                print(
-                    'Would have to overwrite to do this, which --no-clobber forbids.')
+                print('Would have to overwrite to do this, which --no-clobber forbids.')
                 continue
             if stat.S_ISDIR(dst_stat.st_mode):
                 kill_files = [x for x in self.dst_only[i]
@@ -632,62 +636,65 @@ def main():
                                      'between an Android device and the local file system')
     pa = parser.add_argument
     pa('source', metavar='SRC', type=str, nargs='+',
-       help='The directory to read files/directories from. ' +
-       'This must be a local path if -R is not specified, ' +
-       'and an Android path if -R is specified. If SRC does ' +
-       'not end with a final slash, its last path component ' +
+       help='The directory to read files/directories from. '
+       'This must be a local path if -R is not specified, '
+       'and an Android path if -R is specified. If SRC does '
+       'not end with a final slash, its last path component '
        'is appended to DST (like rsync does).')
     pa('destination', metavar='DST', type=str,
-       help='The directory to write files/directories to. ' +
-       'This must be an Android path if -R is not specified, ' +
+       help='The directory to write files/directories to. '
+       'This must be an Android path if -R is not specified, '
        'and a local path if -R is specified.')
     pa('-e', '--adb', metavar='COMMAND', default='adb', type=str,
         help='Use the given adb binary and arguments.')
     pa('--device', action='store_true',
-       help='Directs command to the only connected USB device; ' +
-       'returns an error if more than one USB device is ' +
-       'present. ' +
+       help='Directs command to the only connected USB device; '
+       'returns an error if more than one USB device is present. '
        'Corresponds to the "-d" option of adb.')
     pa('--emulator', action='store_true',
-       help='Directs command to the only running emulator; ' +
-       'returns an error if more than one emulator is running. ' +
+       help='Directs command to the only running emulator; '
+       'returns an error if more than one emulator is running. '
        'Corresponds to the "-e" option of adb.')
     pa('-s', '--serial', metavar='DEVICE', type=str,
-       help='Directs command to the device or emulator with ' +
-       'the given serial number or qualifier. Overrides ' +
-       'ANDROID_SERIAL environment variable. Use "adb devices" ' +
-       'to list all connected devices with their respective ' +
-       'serial number. ' +
+       help='Directs command to the device or emulator with '
+       'the given serial number or qualifier. Overrides '
+       'ANDROID_SERIAL environment variable. Use "adb devices" '
+       'to list all connected devices with their respective serial number. '
        'Corresponds to the "-s" option of adb.')
     pa('-H', '--host', metavar='HOST', type=str,
-       help='Name of adb server host (default: localhost). ' +
+       help='Name of adb server host (default: localhost). '
        'Corresponds to the "-H" option of adb.')
     pa('-P', '--port', metavar='PORT', type=str,
-       help='Port of adb server (default: 5037). ' +
+       help='Port of adb server (default: 5037). '
        'Corresponds to the "-P" option of adb.')
     pa('-R', '--reverse', action='store_true',
        help='Reverse sync (pull, not push).')
     pa('-2', '--two-way', action='store_true',
-       help='Two-way sync (compare modification time; after ' +
-       'the sync, both sides will have all files in the ' +
-       'respective newest version. This relies on the clocks ' +
+       help='Two-way sync (compare modification time; after '
+       'the sync, both sides will have all files in the '
+       'respective newest version. This relies on the clocks '
        'of your system and the device to match.')
     # pa('-t', '--times', action='store_true',
     #                    help='Preserve modification times when copying.')
     pa('-d', '--delete', action='store_true',
-       help='Delete files from DST that are not present on ' +
+       help='Delete files from DST that are not present on '
        'SRC. Mutually exclusive with -2.')
     pa('-f', '--force', action='store_true',
-       help='Allow deleting files/directories when having to ' +
-       'replace a file by a directory or vice versa. This is ' +
+       help='Allow deleting files/directories when having to '
+       'replace a file by a directory or vice versa. This is '
        'disabled by default to prevent large scale accidents.')
     pa('-n', '--no-clobber', action='store_true',
-       help='Do not ever overwrite any ' +
+       help='Do not ever overwrite any '
        'existing files. Mutually exclusive with -f.')
     pa('--dry-run', action='store_true',
-       help='Do not do anything - just show what would ' +
-       'be done.')
+       help='Do not do anything - just show what would be done.')
+    pa('--debug', action='store_true', help='Set log level to debug')
+
     args = parser.parse_args()
+
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+        log.debug("Log level set to DEBUG")
 
     localpatterns = [x.encode('utf-8') for x in args.source]
     remotepath = args.destination.encode('utf-8')
