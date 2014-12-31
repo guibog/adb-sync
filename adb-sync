@@ -201,7 +201,7 @@ class AdbFileSystem(object):
                 return False
         return True
 
-    def listdir(self, path):  # os's name, so pylint: disable=g-bad-name
+    def listdir(self, path):
         """List the contents of a directory."""
         with self.Stdout(self.adb + [b'shell', b'ls -a %s' %
                                      argquote(path)]) as stdout:
@@ -224,7 +224,7 @@ class AdbFileSystem(object):
                 else:
                     self.stat_cache[path + b'/' + filename] = statdata
 
-    def lstat(self, path):  # os's name, so pylint: disable=g-bad-name
+    def lstat(self, path):
         """Stat a file."""
         if path in self.stat_cache:
             return self.stat_cache[path]
@@ -237,19 +237,19 @@ class AdbFileSystem(object):
                 return statdata
         raise OSError('No such file or directory')
 
-    def unlink(self, path):  # os's name, so pylint: disable=g-bad-name
+    def unlink(self, path):
         """Delete a file."""
         if subprocess.call(self.adb + [b'shell', b'rm %s' %
                                        argquote(path)]) != 0:
             raise OSError('unlink failed')
 
-    def rmdir(self, path):  # os's name, so pylint: disable=g-bad-name
+    def rmdir(self, path):
         """Delete a directory."""
         if subprocess.call(self.adb + [b'shell', b'rmdir %s' %
                                        argquote(path)]) != 0:
             raise OSError('rmdir failed')
 
-    def makedirs(self, path):  # os's name, so pylint: disable=g-bad-name
+    def makedirs(self, path):
         """Create a directory."""
         if subprocess.call(self.adb + [b'shell', b'mkdir -p %s' %
                                        argquote(path)]) != 0:
