@@ -26,6 +26,18 @@ import subprocess
 import time
 
 
+def argquote(arg):
+    # Quotes an argument for use by adb shell.
+    # Usually, arguments in 'adb shell' use are put in double quotes by adb,
+    # but not in any way escaped.
+    arg = arg.replace(b'\\', b'\\\\')
+    arg = arg.replace(b'"', b'\\"')
+    arg = arg.replace(b'$', b'\\$')
+    arg = arg.replace(b'`', b'\\`')
+    arg = b'"' + arg + b'"'
+    return arg
+
+
 class AdbFileSystem(object):
 
     """Mimics os's file interface but uses the adb utility."""
@@ -161,17 +173,6 @@ class AdbFileSystem(object):
 
         return Stdout(subprocess.Popen(*popen_args, stdout=subprocess.PIPE))
 
-    def QuoteArgument(self, arg):
-        # Quotes an argument for use by adb shell.
-        # Usually, arguments in 'adb shell' use are put in double quotes by adb,
-        # but not in any way escaped.
-        arg = arg.replace(b'\\', b'\\\\')
-        arg = arg.replace(b'"', b'\\"')
-        arg = arg.replace(b'$', b'\\$')
-        arg = arg.replace(b'`', b'\\`')
-        arg = b'"' + arg + b'"'
-        return arg
-
     def IsWorking(self):
         """Tests the adb connection."""
         # This string should contain all possible evil, but no percent signs.
@@ -185,7 +186,7 @@ class AdbFileSystem(object):
         for test_string in test_strings:
             good = False
             with self.Stdout(self.adb + [b'shell', b'date +%s' %
-                                         self.QuoteArgument(test_string)]) as stdout:
+                                         argquote(test_string)]) as stdout:
                 for line in stdout:
                     line = line.rstrip(b'\r\n')
                     if line == test_string:
@@ -197,14 +198,14 @@ class AdbFileSystem(object):
     def listdir(self, path):  # os's name, so pylint: disable=g-bad-name
         """List the contents of a directory."""
         with self.Stdout(self.adb + [b'shell', b'ls -a %s' %
-                                     self.QuoteArgument(path)]) as stdout:
+                                     argquote(path)]) as stdout:
             for line in stdout:
                 yield line.rstrip(b'\r\n')
 
     def CacheDirectoryLstat(self, path):
         """Cache lstat for a directory."""
         with self.Stdout(self.adb + [b'shell', b'ls -al %s' %
-                                     self.QuoteArgument(path + b'/')]) as stdout:
+                                     argquote(path + b'/')]) as stdout:
             for line in stdout:
                 line = line.rstrip(b'\r\n')
                 try:
@@ -222,7 +223,7 @@ class AdbFileSystem(object):
         if path in self.stat_cache:
             return self.stat_cache[path]
         with self.Stdout(self.adb + [b'shell', b'ls -ald %s' %
-                                     self.QuoteArgument(path)]) as stdout:
+                                     argquote(path)]) as stdout:
             for line in stdout:
                 line = line.rstrip(b'\r\n')
                 statdata, filename = self.LsToStat(line)
@@ -233,19 +234,19 @@ class AdbFileSystem(object):
     def unlink(self, path):  # os's name, so pylint: disable=g-bad-name
         """Delete a file."""
         if subprocess.call(self.adb + [b'shell', b'rm %s' %
-                                       self.QuoteArgument(path)]) != 0:
+                                       argquote(path)]) != 0:
             raise OSError('unlink failed')
 
     def rmdir(self, path):  # os's name, so pylint: disable=g-bad-name
         """Delete a directory."""
         if subprocess.call(self.adb + [b'shell', b'rmdir %s' %
-                                       self.QuoteArgument(path)]) != 0:
+                                       argquote(path)]) != 0:
             raise OSError('rmdir failed')
 
     def makedirs(self, path):  # os's name, so pylint: disable=g-bad-name
         """Create a directory."""
         if subprocess.call(self.adb + [b'shell', b'mkdir -p %s' %
-                                       self.QuoteArgument(path)]) != 0:
+                                       argquote(path)]) != 0:
             raise OSError('mkdir failed')
 
     def utime(self, path, times):
@@ -254,11 +255,11 @@ class AdbFileSystem(object):
         atime, mtime = times
         timestr = time.strftime(b'%Y%m%d.%H%M%S', time.localtime(mtime))
         if subprocess.call(self.adb + [b'shell', b'touch -mt %s %s' %
-                                       (timestr, self.QuoteArgument(path))]) != 0:
+                                       (timestr, argquote(path))]) != 0:
             raise OSError('touch failed')
         timestr = time.strftime(b'%Y%m%d.%H%M%S', time.localtime(atime))
         if subprocess.call(self.adb + [b'shell', b'touch -at %s %s' %
-                                       (timestr, self.QuoteArgument(path))]) != 0:
+                                       (timestr, argquote(path))]) != 0:
             raise OSError('touch failed')
 
     def glob(self, path):
